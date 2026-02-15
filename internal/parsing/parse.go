@@ -11,10 +11,8 @@ import (
 
 func ParseFile(filename string) (*types.GraphType, error) {
 	data, err := os.ReadFile(filename)
-	fmt.Println("file name is", filename)
 	if err != nil {
-		fmt.Println("can't open file")
-		return nil, err
+		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
 
 	graph := &types.GraphType{
@@ -23,24 +21,25 @@ func ParseFile(filename string) (*types.GraphType, error) {
 
 	fileData := string(data)
 	lines := strings.Split(string(fileData), "\n")
-	fmt.Println("data", lines)
 	var startNext, endNext bool
 
 	// Read number of ants
 	if len(lines) == 0 {
-		return nil, fmt.Errorf("file is empty")
+		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
 
 	firstLine := strings.TrimSpace(lines[0])
 	if firstLine == "" || strings.HasPrefix(firstLine, "#") {
-		return nil, fmt.Errorf("first line must be number of ants")
+		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
 
-	fmt.Println("firstline is", lines)
 	types.Ant_number, err = strconv.Atoi(firstLine)
-	if err != nil {
-		return nil, fmt.Errorf("invalid number of ants: %v", err)
+	if err != nil || types.Ant_number <= 0 {
+		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
+	
+	// Print the input file contents
+	fmt.Println(types.Ant_number)
 
 	// Parse the rest of the file
 	for _, line := range lines[1:] {
@@ -62,7 +61,7 @@ func ParseFile(filename string) (*types.GraphType, error) {
 			x, errX := strconv.Atoi(parts[1])
 			y, errY := strconv.Atoi(parts[2])
 			if errX != nil || errY != nil {
-				return nil, fmt.Errorf("invalid coordinates for room %s", line)
+				return nil, fmt.Errorf("ERROR: invalid data format")
 			}
 			room := &types.Room{
 				Name:         parts[0],
@@ -73,12 +72,15 @@ func ParseFile(filename string) (*types.GraphType, error) {
 			graph.Rooms[room.Name] = room
 
 			if startNext {
+				fmt.Println("##start")
 				graph.Start = room
 				startNext = false
 			} else if endNext {
+				fmt.Println("##end")
 				graph.End = room
 				endNext = false
 			}
+			fmt.Println(line)
 			continue
 		}
 
@@ -91,7 +93,7 @@ func ParseFile(filename string) (*types.GraphType, error) {
 			room2, ok2 := graph.Rooms[room2Name]
 
 			if !ok1 || !ok2 {
-				return nil, fmt.Errorf("link references unknown room: %s-%s", room1Name, room2Name)
+				return nil, fmt.Errorf("ERROR: invalid data format")
 			}
 
 			// Ignore self-links
@@ -106,10 +108,11 @@ func ParseFile(filename string) (*types.GraphType, error) {
 			if !contains(room2.Neighborhood, room1) {
 				room2.Neighborhood = append(room2.Neighborhood, room1)
 			}
+			fmt.Println(line)
 			continue
 		}
 
-		return nil, fmt.Errorf("invalid line: %s", line)
+		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
 
 	return graph, nil

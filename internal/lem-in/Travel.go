@@ -1,6 +1,7 @@
 package lemin
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,8 +22,8 @@ func TravelAnt() {
 	for finished < types.Ant_number {
 		moves := []string{}
 
+		// Move existing ants
 		for _, ant := range ants {
-
 			if ant.position >= len(ant.tunnel.Roadmap)-1 {
 				continue
 			}
@@ -36,39 +37,58 @@ func TravelAnt() {
 			}
 		}
 
-		// 2. Spawn new ants (one per tunnel per turn)
-		for _, tunnel := range types.Tunnels {
+		// Spawn new ants intelligently across paths
+		// We spawn an ant in a path if it can accommodate one without blocking
+		for pathIdx := range types.Tunnels {
+			if nextAntID > types.Ant_number {
+				break
+			}
 
-	if nextAntID > types.Ant_number {
-		break
-	}
+			tunnel := &types.Tunnels[pathIdx]
+			
+			// Skip tunnels that are too short
+			if len(tunnel.Roadmap) < 2 {
+				continue
+			}
 
-	// Skip tunnels that are too short
-	if len(tunnel.Roadmap) < 2 {
-		continue
-	}
+			// Check if we can spawn an ant in this tunnel
+			// We can spawn if the path is not blocked (no ant at position 1)
+			canSpawn := true
+			for _, ant := range ants {
+				if ant.tunnel == tunnel && ant.position == 1 {
+					canSpawn = false
+					break
+				}
+			}
 
-	ant := &Ant{
-		id:       nextAntID,
-		tunnel:   &tunnel,
-		position: 1, // move directly to first real room
-	}
+			if canSpawn {
+				ant := &Ant{
+					id:       nextAntID,
+					tunnel:   tunnel,
+					position: 0, // Start at position 0 (start room)
+				}
 
-	ants = append(ants, ant)
+				ants = append(ants, ant)
+				nextAntID++
 
-	room := tunnel.Roadmap[1]
-	moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+room.Name)
+				// Move the newly spawned ant to first room
+				if len(tunnel.Roadmap) > 1 {
+					ant.position = 1
+					room := tunnel.Roadmap[1]
+					moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+room.Name)
 
-	if ant.position == len(tunnel.Roadmap)-1 {
-		finished++
-	}
-
-	nextAntID++
-}
-
+					if ant.position == len(tunnel.Roadmap)-1 {
+						finished++
+					}
+				}
+			}
+		}
 
 		if len(moves) > 0 {
-			println(strings.Join(moves, " "))
+			fmt.Println(strings.Join(moves, " "))
+		} else if finished < types.Ant_number {
+			// If no moves but not all finished, something is wrong
+			break
 		}
 	}
 }
