@@ -39,22 +39,33 @@ func TravelAnt() {
 		// 2. Spawn new ants (one per tunnel per turn)
 		for _, tunnel := range types.Tunnels {
 
-			if nextAntID > types.Ant_number {
-				break
-			}
+	if nextAntID > types.Ant_number {
+		break
+	}
 
-			ant := &Ant{
-				id:       nextAntID,
-				tunnel:   &tunnel,
-				position: 0,
-			}
-			ants = append(ants, ant)
+	// Skip tunnels that are too short
+	if len(tunnel.Roadmap) < 2 {
+		continue
+	}
 
-			startRoom := tunnel.Roadmap[0]
-			moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+startRoom.Name)
+	ant := &Ant{
+		id:       nextAntID,
+		tunnel:   &tunnel,
+		position: 1, // move directly to first real room
+	}
 
-			nextAntID++
-		}
+	ants = append(ants, ant)
+
+	room := tunnel.Roadmap[1]
+	moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+room.Name)
+
+	if ant.position == len(tunnel.Roadmap)-1 {
+		finished++
+	}
+
+	nextAntID++
+}
+
 
 		if len(moves) > 0 {
 			println(strings.Join(moves, " "))
