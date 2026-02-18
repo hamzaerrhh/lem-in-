@@ -2,14 +2,18 @@ package lemin
 
 import (
 	"fmt"
+	"strings"
 
 	"lemin/internal/types"
 )
+
+
 
 type Edge struct {
 	to       int
 	rev      int
 	capacity int
+	name string
 }
 
 type FlowGraph struct {
@@ -32,12 +36,12 @@ func FindAllPaths(graph *types.GraphType) error {
 		idx++
 	}
 
-	flowGraph := buildFlowGraph(graph, roomIndex)
+	flowGraph := buildFlowGraph(graph, roomIndex, indexRoom)
 	
 	s := roomIndex[graph.Start]
 	t := roomIndex[graph.End]
-	source := s*2 + 1  // output node of start
-	sink := t * 2      // input node of end
+	source := s*2 + 1  
+	sink := t * 2      
 	
 	maxFlow(flowGraph, source, sink)
 
@@ -77,44 +81,48 @@ func FindAllPaths(graph *types.GraphType) error {
 
 
 
-// bfs finds a single shortest path avoiding used rooms
-func bfs(graph *types.GraphType, usedRooms map[*types.Room]bool) ([]*types.Room, bool) {
-	start := graph.Start
-	end := graph.End
 
-	queue := []*types.Room{start}
-	visited := make(map[*types.Room]bool)
-	parent := make(map[*types.Room]*types.Room)
 
-	visited[start] = true
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
 
-		if current == end {
-			// reconstruct path
-			path := []*types.Room{}
-			for r := end; r != nil; r = parent[r] {
-				path = append([]*types.Room{r}, path...)
-			}
-			return path, true
-		}
+func buildFlowGraph(graph *types.GraphType, roomIndex map[*types.Room]int, indexRoom map[int]*types.Room) *FlowGraph {
 
-		for _, neighbor := range current.Neighborhood {
-			if visited[neighbor] {
-				continue
-			}
-			if usedRooms[neighbor] && neighbor != end && neighbor != start {
-				continue // skip rooms already used in another path
-			}
-			visited[neighbor] = true
-			parent[neighbor] = current
-			queue = append(queue, neighbor)
-		}
-	}
+    n := len(graph.Rooms) * 2
+    fg := &FlowGraph{adj: make([][]*Edge, n)}
 
-	return nil, false
+    addEdge := func(u, v, cap int,name string) {
+        fg.adj[u] = append(fg.adj[u], &Edge{v, len(fg.adj[v]), cap,name})
+        fg.adj[v] = append(fg.adj[v], &Edge{u, len(fg.adj[u]) - 1, 0,name})
+    }
+
+    // Create in/out nodes for each room
+    for room, i := range roomIndex {
+        in := i * 2
+        out := i*2 + 1
+
+        // Set capacity based on room type
+        if room == graph.Start || room == graph.End {
+            addEdge(in, out, types.Ant_number,room.Name) // infinite capacity for start/end
+        } else {
+            addEdge(in, out, 1,room.Name) // capacity 1 for intermediate rooms
+        }
+    }
+	//log the flow graph structure for debugging
+
+    // Connect rooms based on neighborhood
+    for room, i := range roomIndex {
+        out := i*2 + 1  // output node of current room
+
+        for _, neigh := range room.Neighborhood {
+            j := roomIndex[neigh]
+            inNeigh := j * 2  // input node of neighbor
+            addEdge(out, inNeigh, 1,neigh.Name) // capacity 1 for each edge
+        }
+    }
+		LogFlowGraph(fg, graph, roomIndex, indexRoom)
+
+
+    return fg
 }
 
 func SelectOptimalPaths(paths []types.Tunnel, ants int) []types.Tunnel {
@@ -154,44 +162,6 @@ func SelectOptimalPaths(paths []types.Tunnel, ants int) []types.Tunnel {
 
 	return paths[:bestK]
 }
-
-func buildFlowGraph(graph *types.GraphType, roomIndex map[*types.Room]int) *FlowGraph {
-
-    n := len(graph.Rooms) * 2
-    fg := &FlowGraph{adj: make([][]*Edge, n)}
-
-    addEdge := func(u, v, cap int) {
-        fg.adj[u] = append(fg.adj[u], &Edge{v, len(fg.adj[v]), cap})
-        fg.adj[v] = append(fg.adj[v], &Edge{u, len(fg.adj[u]) - 1, 0})
-    }
-
-    // Create in/out nodes for each room
-    for room, i := range roomIndex {
-        in := i * 2
-        out := i*2 + 1
-
-        // Set capacity based on room type
-        if room == graph.Start || room == graph.End {
-            addEdge(in, out, types.Ant_number) // infinite capacity for start/end
-        } else {
-            addEdge(in, out, 1) // capacity 1 for intermediate rooms
-        }
-    }
-
-    // Connect rooms based on neighborhood
-    for room, i := range roomIndex {
-        out := i*2 + 1  // output node of current room
-
-        for _, neigh := range room.Neighborhood {
-            j := roomIndex[neigh]
-            inNeigh := j * 2  // input node of neighbor
-            addEdge(out, inNeigh, 1) // capacity 1 for each edge
-        }
-    }
-
-    return fg
-}
-
 func maxFlow(fg *FlowGraph, source, sink int) int {
 	flow := 0
 
@@ -326,7 +296,7 @@ func extractPaths(fg *FlowGraph, graph *types.GraphType, start, end *types.Room,
                     }
                 }
             }
-            
+			
             if !found {
                 break
             }
@@ -344,3 +314,73 @@ func extractPaths(fg *FlowGraph, graph *types.GraphType, start, end *types.Room,
 }
 
 
+
+
+//printFlowGraph is a helper function to visualize the flow graph (for debugging)
+func LogFlowGraph(fg *FlowGraph, graph *types.GraphType, roomIndex map[*types.Room]int, indexRoom map[int]*types.Room) {
+    fmt.Println("\n=== FLOW GRAPH VISUALIZATION ===")
+    fmt.Println("Format: [node_id] (room:name) [type] --> [neighbor_id] (room:neighbor) cap:capacity")
+    fmt.Println("Node types: IN=even node, OUT=odd node")
+    fmt.Println(strings.Repeat("-", 80))
+    
+    // Print all nodes with their types
+    fmt.Println("\n--- NODES ---")
+    for nodeID := 0; nodeID < len(fg.adj); nodeID++ {
+        roomID := nodeID / 2
+        room := indexRoom[roomID]
+        nodeType := "IN"
+        if nodeID%2 == 1 {
+            nodeType = "OUT"
+        }
+        
+        // Mark start/end
+        special := ""
+        if room == graph.Start {
+            special = " [START]"
+        } else if room == graph.End {
+            special = " [END]"
+        }
+        
+        fmt.Printf("Node %2d: %s (%s)%s\n", nodeID, room.Name, nodeType, special)
+    }
+    
+    // Print all edges with capacities
+    fmt.Println("\n--- EDGES (Residual Graph) ---")
+    for u := 0; u < len(fg.adj); u++ {
+        if len(fg.adj[u]) == 0 {
+            continue
+        }
+        
+        roomU := indexRoom[u/2]
+        uType := "IN"
+        if u%2 == 1 {
+            uType = "OUT"
+        }
+        
+        for _, e := range fg.adj[u] {
+            roomV := indexRoom[e.to/2]
+            vType := "IN"
+            if e.to%2 == 1 {
+                vType = "OUT"
+            }
+            
+            // Mark if it's an internal node connection (same room)
+            connectionType := ""
+            if u/2 == e.to/2 {
+                connectionType = " [INTERNAL]"
+            }
+            
+            fmt.Printf("Node %2d (%s:%s) --> %2d (%s:%s) cap:%2d%s\n", 
+                u, roomU.Name, uType, 
+                e.to, roomV.Name, vType, 
+                e.capacity, connectionType)
+        }
+    }
+    
+    // Summary
+    fmt.Println(strings.Repeat("-", 80))
+    fmt.Printf("Total nodes: %d (rooms: %d)\n", len(fg.adj), len(graph.Rooms))
+    fmt.Printf("Start node (out): %d (%s_out)\n", roomIndex[graph.Start]*2+1, graph.Start.Name)
+    fmt.Printf("End node (in): %d (%s_in)\n", roomIndex[graph.End]*2, graph.End.Name)
+    fmt.Println("===============================\n")
+}
