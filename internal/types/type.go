@@ -5,16 +5,6 @@ var (
 	Graph      *GraphType
 	Tunnels    []Tunnel
 )
-type Edge struct {
-	to       int
-	rev      int
-	capacity int
-}
-
-type FlowGraph struct {
-	adj [][]*Edge
-}
-
 
 type Tunnel struct {
 	Weight  int

@@ -10,7 +10,6 @@ import (
 
 func main() {
 	args := os.Args
-	// handle the args
 
 	if len(args) < 2 {
 		fmt.Println("ERROR: invalid data format")
@@ -21,13 +20,13 @@ func main() {
 	coulounie, err := parsing.ParseFile(fileName)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	errPath := lemin.FindAllPaths(coulounie)
 	if errPath != nil {
 		fmt.Println("ERROR: invalid data format")
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	fmt.Println()

@@ -15,10 +15,50 @@ func TravelAnt() {
 		position int
 	}
 
+	type PathInfo struct {
+		tunnel   *types.Tunnel
+		length   int
+		assigned int // total ants assigned to this path
+		sent     int // ants already spawned
+	}
+
 	var ants []*Ant
 	nextAntID := 1
 	finished := 0
+	var paths []PathInfo
 
+	// ----------------------------
+	// 1️⃣ Build paths
+	// ----------------------------
+	for i := range types.Tunnels {
+		t := &types.Tunnels[i]
+		if len(t.Roadmap) >= 2 {
+			paths = append(paths, PathInfo{
+				tunnel: t,
+				length: len(t.Roadmap),
+			})
+		}
+	}
+
+	// ----------------------------
+	// 2️⃣ Distribute ants optimally
+	// ----------------------------
+	remaining := types.Ant_number
+	for remaining > 0 {
+		best := 0
+		for i := 1; i < len(paths); i++ {
+			if paths[i].length+paths[i].assigned <
+				paths[best].length+paths[best].assigned {
+				best = i
+			}
+		}
+		paths[best].assigned++
+		remaining--
+	}
+
+	// ----------------------------
+	// 3️⃣ Simulation
+	// ----------------------------
 	for finished < types.Ant_number {
 		moves := []string{}
 
@@ -37,22 +77,20 @@ func TravelAnt() {
 			}
 		}
 
-		// Spawn new ants intelligently across paths
-		// We spawn an ant in a path if it can accommodate one without blocking
-		for pathIdx := range types.Tunnels {
+		// Spawn ants according to balanced distribution
+		for i := range paths {
 			if nextAntID > types.Ant_number {
 				break
 			}
 
-			tunnel := &types.Tunnels[pathIdx]
-			
-			// Skip tunnels that are too short
-			if len(tunnel.Roadmap) < 2 {
+			// Skip if this path already sent all its assigned ants
+			if paths[i].sent >= paths[i].assigned {
 				continue
 			}
 
-			// Check if we can spawn an ant in this tunnel
-			// We can spawn if the path is not blocked (no ant at position 1)
+			tunnel := paths[i].tunnel
+
+			// Check if first room is free
 			canSpawn := true
 			for _, ant := range ants {
 				if ant.tunnel == tunnel && ant.position == 1 {
@@ -65,21 +103,18 @@ func TravelAnt() {
 				ant := &Ant{
 					id:       nextAntID,
 					tunnel:   tunnel,
-					position: 0, // Start at position 0 (start room)
+					position: 1,
 				}
 
 				ants = append(ants, ant)
+				paths[i].sent++
 				nextAntID++
 
-				// Move the newly spawned ant to first room
-				if len(tunnel.Roadmap) > 1 {
-					ant.position = 1
-					room := tunnel.Roadmap[1]
-					moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+room.Name)
+				room := tunnel.Roadmap[1]
+				moves = append(moves, "L"+strconv.Itoa(ant.id)+"-"+room.Name)
 
-					if ant.position == len(tunnel.Roadmap)-1 {
-						finished++
-					}
+				if ant.position == len(tunnel.Roadmap)-1 {
+					finished++
 				}
 			}
 		}
@@ -87,7 +122,6 @@ func TravelAnt() {
 		if len(moves) > 0 {
 			fmt.Println(strings.Join(moves, " "))
 		} else if finished < types.Ant_number {
-			// If no moves but not all finished, something is wrong
 			break
 		}
 	}

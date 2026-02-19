@@ -20,15 +20,17 @@ func ParseFile(filename string) (*types.GraphType, error) {
 	}
 
 	fileData := string(data)
+
 	lines := strings.Split(string(fileData), "\n")
+
 	var startNext, endNext bool
 
-	// Read number of ants
 	if len(lines) == 0 {
 		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
 
 	firstLine := strings.TrimSpace(lines[0])
+
 	if firstLine == "" || strings.HasPrefix(firstLine, "#") {
 		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
@@ -37,15 +39,11 @@ func ParseFile(filename string) (*types.GraphType, error) {
 	if err != nil || types.Ant_number <= 0 {
 		return nil, fmt.Errorf("ERROR: invalid data format")
 	}
-	
-	// Print the input file contents
-	fmt.Println(types.Ant_number)
 
-	// Parse the rest of the file
 	for _, line := range lines[1:] {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "##") {
-			continue // skip comments
+			continue
 		}
 
 		if line == "##start" {
@@ -72,15 +70,12 @@ func ParseFile(filename string) (*types.GraphType, error) {
 			graph.Rooms[room.Name] = room
 
 			if startNext {
-				fmt.Println("##start")
 				graph.Start = room
 				startNext = false
 			} else if endNext {
-				fmt.Println("##end")
 				graph.End = room
 				endNext = false
 			}
-			fmt.Println(line)
 			continue
 		}
 
@@ -101,14 +96,12 @@ func ParseFile(filename string) (*types.GraphType, error) {
 				continue
 			}
 
-			// Add neighbors (no duplicates)
 			if !contains(room1.Neighborhood, room2) {
 				room1.Neighborhood = append(room1.Neighborhood, room2)
 			}
 			if !contains(room2.Neighborhood, room1) {
 				room2.Neighborhood = append(room2.Neighborhood, room1)
 			}
-			fmt.Println(line)
 			continue
 		}
 
