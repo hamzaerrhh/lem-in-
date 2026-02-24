@@ -2,7 +2,6 @@ package lemin
 
 import (
 	"lem-inV2/internal/types"
-	"math"
 )
 
 func FindOptimalPaths(rooms map[string]*types.Room, start, end string, totalAnts int) []types.Path {
@@ -15,7 +14,6 @@ func FindOptimalPaths(rooms map[string]*types.Room, start, end string, totalAnts
 	}
 
 	var bestPathSet []types.Path
-	minTurns := math.MaxInt32
 
 	for {
 		parent := make(map[string]string)
@@ -55,15 +53,10 @@ func FindOptimalPaths(rooms map[string]*types.Room, start, end string, totalAnts
 
 		// Calculate efficiency of the CURRENT flow state
 		currentPaths := ExtractPaths(rooms, start, end, capacity)
-		turns := CalculateTurns(totalAnts, currentPaths)
 
-		if turns <= minTurns {
-			minTurns = turns
+	
 			bestPathSet = currentPaths
-		} else {
-			// If total turns increase by adding more paths, we've found our optimum
-			break
-		}
+		
 	}
 	return bestPathSet
 }
@@ -117,13 +110,3 @@ func ExtractPaths(rooms map[string]*types.Room, start, end string, cap map[types
 	return paths
 }
 
-func CalculateTurns(ants int, paths []types.Path) int {
-	if len(paths) == 0 {
-		return int(^uint(0) >> 1)
-	}
-	sumLen := 0
-	for _, p := range paths {
-		sumLen += len(p) - 1
-	}
-	return (ants + sumLen - 1) / len(paths)
-}
