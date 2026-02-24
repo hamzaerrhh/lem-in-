@@ -2,35 +2,42 @@ package main
 
 import (
 	"fmt"
+	lemin "lem-inV2/internal/lem-in"
+	"lem-inV2/internal/parsing"
 	"os"
-
-	lemin "lemin/internal/lem-in"
-	parsing "lemin/internal/parsing"
 )
 
+
+
 func main() {
-	args := os.Args
-	// handle the args
 
-	if len(args) < 2 {
-		fmt.Println("ERROR: invalid data format")
-		os.Exit(1)
+	if len(os.Args) != 2 {
+		return
 	}
 
-	fileName := args[1]
-	coulounie, err := parsing.ParseFile(fileName)
+	file, err := os.Open(os.Args[1])
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	errPath := lemin.FindAllPaths(coulounie)
-	if errPath != nil {
 		fmt.Println("ERROR: invalid data format")
-		os.Exit(1)
+		return
+	}
+	defer file.Close()
+
+	ants, rooms, startNode, endNode, err := parsing.ParseInput(file)
+	if err != nil {
+		fmt.Println("ERROR: invalid data format")
+		return
 	}
 
-	fmt.Println()
+	paths := lemin.FindOptimalPaths(rooms, startNode, endNode, ants)
+	if len(paths) == 0 {
+		fmt.Println("ERROR: invalid data format")
+		return
+	}
 
-	lemin.TravelAnt()
+	// 2. Distribute and move
+	distribution := lemin.DistributeAnts(ants, paths)
+	lemin.MoveAnts(ants, paths, distribution)
 }
+
+
+
